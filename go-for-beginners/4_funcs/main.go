@@ -3,6 +3,7 @@ package main
 import (
     "fmt"
     "math"
+    "funcs/utils"
 )
 
 // Функция с двумя возвращаемыми значениями
@@ -27,7 +28,7 @@ func apply(x float64, fn func(float64) float64) float64 {
     return fn(x)
 }
 
-func minMax(nums []int) (int, int) {
+/*func minMax(nums []int) (int, int) {
     min := nums[0]
     max := nums[0]
     for i:= 1; i<len(nums); i++ {
@@ -39,7 +40,7 @@ func minMax(nums []int) (int, int) {
         }
     }
     return min, max
-}
+}*/
 
 func main() {
     result, err := divide(10, 3)
@@ -60,8 +61,8 @@ func main() {
     //Паттерн (result, error) — главный способ обработки ошибок в Go. 
     //Не исключения, а явные возвращаемые значения.
 
-    //Задание: напиши функцию minMax(nums []int) (int, int), 
+    //Задание: напиши функцию MinMax(nums []int) (int, int), 
     //которая возвращает минимум и максимум из среза.
     nums := []int{2,7,12,-100,9,61,3,8,1,5}
-    fmt.Println(minMax(nums))
+    fmt.Println(utils.MinMax(nums))
 }

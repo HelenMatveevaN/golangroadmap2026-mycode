@@ -10,7 +10,6 @@ N горутин читают задачи из общего канала и о�
 
 */
 
-
 package main
 
 import (
@@ -24,6 +23,14 @@ func worker(id int, wg *sync.WaitGroup) {
     fmt.Printf("Воркер %d начал работу\n", id)
     time.Sleep(time.Millisecond * 100)
     fmt.Printf("Воркер %d завершил\n", id)
+}
+
+//NEW
+func workerGet(idWorker int, tasks <-chan int, wg1 *sync.WaitGroup) {
+    defer wg1.Done()
+    for task := range tasks {
+        fmt.Printf("Воркер %d обработал задачу %d\n", idWorker, task)
+    }
 }
 
 func generate(nums ...int) <-chan int {
@@ -63,47 +70,24 @@ func main() {
         fmt.Println(n)
     }
 
-    fmt.Printf("========================================\n")
+    //NEW
+    fmt.Println("==============================================")
+    /*Задание: реализуй пул воркеров — 
+    N горутин читают задачи из общего канала и обрабатывают их
+    */
+    const numWorkers = 3
 
-    //Задание: реализуй пул воркеров — 
-    //N горутин читают задачи из общего канала и обрабатывают их
+    var wg1 sync.WaitGroup
+    tasks := generate(11,12,13,14,15,16,17,18,19,20)
 
-    //1-создаем каналы
-    numJobs := 6
-    jobs := make(chan int, numJobs)
-    rslts := make(chan int, numJobs)
-
-    //2 - пул воркеров
-    numWorkers := 3
-    var poolWg sync.WaitGroup
-
-    for w:=1; w<=numWorkers; w++ {
-        poolWg.Add(1)
-        //каждая go-рутина-воркер читает из общего канала jobs
-        go func(wrkID int) {
-            defer poolWg.Done()
-            for job := range jobs {
-                fmt.Printf("Воркер %d взял задачу %d\n", wrkID, job)
-                time.Sleep(time.Millisecond * 50) //Имитация работы
-                rslts <- job * 2
-            }
-        }(w)
+    //запуск воркеров
+    wg1.Add(numWorkers)
+    for w:= 1; w <= numWorkers; w++ {
+        go workerGet(w, tasks, &wg1)
     }
-
-    //3 - отправка задач в канал
-    for j := 1; j <= numJobs; j++ {
-        jobs <- j
-    }
-    close(jobs) //закрываем, чтобы воркеры вышли из цикла
-
-    //4 - ждем завершения всех воркеров и закрываем канал результатов
-    go func(){
-        poolWg.Wait()
-        close(rslts)
-    }()
-
-    //вывод результатов
-    for res := range rslts {
-        fmt.Printf("Результат: %d\n", res)
-    }
+    
+    wg1.Wait()
+    fmt.Println("Все задачи обработаны.")
+    
 }
+
