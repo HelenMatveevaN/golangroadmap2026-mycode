@@ -1,0 +1,65 @@
+➜  mycli git:(main) ✗ go run main.go -timeout=3s https://google.com https://github.com https://go.dev
+URL                 STATUS  DURATION  SIZE          ERROR
+https://go.dev      200     383ms     64185 bytes   <nil>
+https://github.com  200     451ms     591640 bytes  <nil>
+https://google.com  200     548ms     82996 bytes   <nil>
+
+
+➜  mycli git:(main) ✗ go test -cover ./...
+?   	mycli	[no test files]
+
+➜  mycli git:(main) ✗ go test -coverprofile=coverage.out ./...
+?   	mycli	[no test files]
+
+
+
+
+➜  mycli git:(main) ✗ go test -v -cover
+=== RUN   TestAll
+=== RUN   TestAll/Сценарий_1:_Успешный_запрос_200_ОК
+=== RUN   TestAll/Сценарий_2:_Сервер_упал_с_ошибкой_500
+=== RUN   TestAll/Сценарий_3:_Ошибка_сети_(несуществующий_домен)
+=== RUN   TestAll/Сценарий_4:_Несколько_URL_одновременно_(Конкурентность)
+=== RUN   TestAll/Сценарий_5:_Прерывание_по_таймауту
+--- PASS: TestAll (0.06s)
+    --- PASS: TestAll/Сценарий_1:_Успешный_запрос_200_ОК (0.00s)
+    --- PASS: TestAll/Сценарий_2:_Сервер_упал_с_ошибкой_500 (0.00s)
+    --- PASS: TestAll/Сценарий_3:_Ошибка_сети_(несуществующий_домен) (0.00s)
+    --- PASS: TestAll/Сценарий_4:_Несколько_URL_одновременно_(Конкурентность) (0.00s)
+    --- PASS: TestAll/Сценарий_5:_Прерывание_по_таймауту (0.01s)
+=== RUN   TestMainFunc_EmptyArgs
+Использование: go run main.go <url1> <url2> ...
+--- PASS: TestMainFunc_EmptyArgs (0.00s)
+PASS
+coverage: 69.0% of statements
+ok  	mycli	0.547s
+➜  mycli git:(main) ✗ go test -coverprofile=coverage.out ./...
+ok  	mycli	0.556s	coverage: 69.0% of statements
+➜  mycli git:(main) ✗ go tool cover -html=coverage.out
+
+file:///private/var/folders/nl/112fnfcj3n7559syccm9rwmw0000gn/T/cover932981768/coverage.html#file0
+(визуальный контроль)
+Зеленые строки — это код, который вы успешно протестировали (все ваши горутины, каналы и логика).
+Красные строки — то, куда тест не зашел (скорее всего, оставшаяся часть функции main).
+
+
+
+
+➜  mycli git:(main) ✗ go test -v -race
+=== RUN   TestAll
+=== RUN   TestAll/Сценарий_1:_Успешный_запрос_200_ОК
+=== RUN   TestAll/Сценарий_2:_Сервер_упал_с_ошибкой_500
+=== RUN   TestAll/Сценарий_3:_Ошибка_сети_(несуществующий_домен)
+=== RUN   TestAll/Сценарий_4:_Несколько_URL_одновременно_(Конкурентность)
+=== RUN   TestAll/Сценарий_5:_Прерывание_по_таймауту
+--- PASS: TestAll (0.07s)
+    --- PASS: TestAll/Сценарий_1:_Успешный_запрос_200_ОК (0.00s)
+    --- PASS: TestAll/Сценарий_2:_Сервер_упал_с_ошибкой_500 (0.00s)
+    --- PASS: TestAll/Сценарий_3:_Ошибка_сети_(несуществующий_домен) (0.00s)
+    --- PASS: TestAll/Сценарий_4:_Несколько_URL_одновременно_(Конкурентность) (0.00s)
+    --- PASS: TestAll/Сценарий_5:_Прерывание_по_таймауту (0.01s)
+=== RUN   TestMainFunc_EmptyArgs
+Использование: go run main.go <url1> <url2> ...
+--- PASS: TestMainFunc_EmptyArgs (0.00s)
+PASS
+ok  	mycli	1.635s

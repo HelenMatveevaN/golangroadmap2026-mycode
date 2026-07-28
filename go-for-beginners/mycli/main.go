@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"os"
 	"sync"
-	"time"
 	"text/tabwriter"
+	"time"
 )
 
 type ResultURL struct {
@@ -22,8 +22,10 @@ type ResultURL struct {
 
 var GlobalChanURL chan ResultURL
 
+var httpClient = http.DefaultClient
+
 func init() {
-	GlobalChanURL = make(chan ResultURL, 3)
+	GlobalChanURL = make(chan ResultURL, 100)
 }
 
 func checkURL(ctx context.Context, url string, wg *sync.WaitGroup) {
@@ -47,7 +49,7 @@ func checkURL(ctx context.Context, url string, wg *sync.WaitGroup) {
 	}
 
 	//отправляем запрос через станд.клиент
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		GlobalChanURL <- ResultURL{
 			URL:			url,
@@ -82,56 +84,10 @@ func checkURL(ctx context.Context, url string, wg *sync.WaitGroup) {
 	}
 }
 
-func main() {
-
-	var wg sync.WaitGroup
-
-	// регистрация флагов
-	timeout := flag.Duration("timeout", 3*time.Second, "Ограничение времени ожидания") //возвр-ет указ-ль на значение
-
-	// парсинг командной строки
-	flag.Parse()
-
-	//	регистрация параметров
-	args := flag.Args()
-
-	// создаем контекст с таймаутом
-	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
-	defer cancel()
-
-	/*// вывод флагов
-	fmt.Printf("--- ФЛАГИ ---\n")
-	fmt.Printf("Флаг -timeout: %v\n\n", *timeout)
-	*/
-
-	// вывод параметров
-	//fmt.Printf("--- ARGS ---\n")
-	
-	/*fmt.Printf("Всего параметров: %d\n", len(args))
-	fmt.Printf("Полный список параметров: %v\n", args)
-
-	if len(args) > 0 {
-		fmt.Printf("Первый параметр (индекс 0): %s\n", flag.Arg(0))
-	}
-	fmt.Printf("\n")
-
-	if len(args) < 2 {
-		fmt.Println("Использование: go run main.go <url1> <url2> ...")
-		return
-	}
-	*/
-
-	for _, url := range args {
-		wg.Add(1)
-		go checkURL(ctx, url, &wg)
-	}
-
-	go func() {
-		wg.Wait()
-		close(GlobalChanURL)
-	}()
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 8, 2, ' ', 0)
+//выносим чтение из канала и печать таблицы в отдельную ф-ю
+//принимает io.Writer - "куда писать" (т.е., os.Stdout для main или буфер для теста)
+func PrintResults(out io.Writer) {
+	w := tabwriter.NewWriter(out, 0, 8, 2, ' ', 0)
 	fmt.Fprintln(w, "URL\tSTATUS\tDURATION\tSIZE\tERROR")
 
 	//	чтение результатов
@@ -143,8 +99,34 @@ func main() {
 		ms := res.Duration.Milliseconds()
 		fmt.Fprintf(w, "%s\t%d\t%dms\t%d bytes\t%s\n", res.URL, res.StatusCode, ms, res.Size, errStr)
 	}
-
 	w.Flush() // сброс буфера, чтобы строки вывелись на экран
+}
 
-	//fmt.Println("\nКонец функции main")
+func main() {
+	var wg sync.WaitGroup
+
+	// регистрация флагов
+	timeout := flag.Duration("timeout", 3*time.Second, "Ограничение времени ожидания") //возвр-ет указ-ль на значение
+	flag.Parse() // парсинг командной строки
+	args := flag.Args() //	регистрация параметров
+
+	if len(args) == 0 {
+		fmt.Println("Использование: go run main.go <url1> <url2> ...")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+
+	for _, url := range args {
+		wg.Add(1)
+		go checkURL(ctx, url, &wg)
+	}
+
+	go func() {
+		wg.Wait()
+		close(GlobalChanURL)
+	}()
+
+	PrintResults(os.Stdout) //вызов новой ф-ии
 }

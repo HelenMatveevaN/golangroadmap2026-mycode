@@ -1,0 +1,21 @@
+mode: set
+mycli/main.go:27.13,29.2 1 1
+mycli/main.go:31.68,40.16 4 1
+mycli/main.go:40.16,49.3 2 0
+mycli/main.go:52.2,53.16 2 1
+mycli/main.go:53.16,62.3 2 1
+mycli/main.go:63.2,67.16 3 1
+mycli/main.go:67.16,76.3 2 0
+mycli/main.go:78.2,84.3 1 1
+mycli/main.go:89.34,94.33 3 1
+mycli/main.go:94.33,96.23 2 1
+mycli/main.go:96.23,98.4 1 1
+mycli/main.go:99.3,100.96 2 1
+mycli/main.go:102.2,102.11 1 1
+mycli/main.go:105.13,113.20 5 1
+mycli/main.go:113.20,116.3 2 1
+mycli/main.go:118.2,121.27 3 0
+mycli/main.go:121.27,124.3 2 0
+mycli/main.go:126.2,126.12 1 0
+mycli/main.go:126.12,129.3 2 0
+mycli/main.go:131.2,131.25 1 0
