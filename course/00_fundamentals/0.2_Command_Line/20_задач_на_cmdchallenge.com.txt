@@ -1,0 +1,135 @@
+* Решить 20 задач на cmdchallenge.com.
+Задача 1 (hello_world):
+➜  2 git:(main) ✗ echo "hello world"
+hello world
+Задача 2 (current_working_directory):
+➜  2 git:(main) ✗ pwd
+/Users/imac/studygo/2
+Задача 3 (list_files): Выведите список всех файлов в текущей директории (включая скрытые).
+➜  2 git:(main) ✗ ls -la
+total 8
+drwxr-xr-x  4 imac  staff  128 31 июл 11:44 .
+drwxr-xr-x  9 imac  staff  288 31 июл 11:35 ..
+drwxr-xr-x  2 imac  staff   64 31 июл 11:36 1
+-rw-r--r--  1 imac  staff   12 31 июл 11:45 file.txt
+
+Задача 4 (create_directory): Создайте новую директорию с именем cmdchallenge.
+➜  2 git:(main) ✗ mkdir take_the_challenge
+➜  2 git:(main) ✗ ls
+1                  file.txt           take_the_challenge
+
+Задача 5 (create_file): Создайте пустой файл с именем take_the_challenge.
+➜  2 git:(main) ✗ touch take_the_challenge_
+➜  2 git:(main) ✗ ls
+1                   take_the_challenge
+file.txt            take_the_challenge_
+
+Задача 6 (print_file_contents): Выведите на экран всё содержимое файла access.log.
+➜  2 git:(main) ✗ cat access.log
+GET /home
+POST /login
+GET /profile
+PUT /settings
+GET /logout
+ERROR 500
+GET /assets
+
+Задача 7 (last_lines): Выведите только последние 5 строк файла access.log.
+➜  2 git:(main) ✗ tail -n 5 access.log
+GET /profile
+PUT /settings
+GET /logout
+ERROR 500
+GET /assets
+
+Задача 8 (find_string_in_a_file): Выведите все строки из файла access.log, которые содержат строку "GET".
+➜  2 git:(main) ✗ cat access.log | grep "GET"
+GET /home
+GET /profile
+GET /logout
+GET /assets
+
+➜  2 git:(main) ✗ grep "GET" access.log
+GET /home
+GET /profile
+GET /logout
+GET /assets
+
+Задача 9 (search_for_files_containing_string): Представьте, что у вас в папке много разных логов. Напишите команду, которая выведет только имена файлов (в текущей директории), внутри которых встречается текст "500".
+➜  2 git:(main) ✗ grep -l "500" *
+grep: 1: Is a directory
+access.log
+grep: cmdchallenge: Is a directory
+
+Задача 10 (count_lines): Посчитайте общее количество строк в файле access.log. [1, 2]
+➜  2 git:(main) ✗ cat access.log | wc -l
+       7
+
+➜  2 git:(main) ✗ wc -l access.log
+       7 access.log
+
+* Задача 11 (remove_files): Удалите файл file.txt, который остался у вас в папке с прошлых шагов.
+➜  2 git:(main) ✗ rm file.txt
+➜  2 git:(main) ✗ ls
+1                  cmdchallenge       take_the_challenge
+access.log         internal           words.txt
+
+* Задача 12 (recursive_copy): Скопируйте папку internal вместе со всем её содержимым (включая подпапки и файлы) в новую папку с именем cloned_internal.
+➜  2 git:(main) ✗ cp -r internal cloned_internal
+➜  2 git:(main) ✗ ls
+1                  cloned_internal    internal           words.txt
+access.log         cmdchallenge       take_the_challenge
+
+* Задача 13 (find_nested_file): Найдите и выведите на экран путь к файлу с именем config.cfg, который лежит где-то глубоко внутри текущей директории (используйте утилиту поиска).
+➜  2 git:(main) ✗ find . -name "config.cfg"
+./internal/backup/config.cfg
+./cloned_internal/backup/config.cfg
+
+* Задача 14 (count_string_occurrences): Посчитайте, сколько раз слово banana встречается в созданном файле words.txt.
+➜  2 git:(main) ✗ cat words.txt | grep "banana" | wc -l
+       3
+➜  2 git:(main) ✗ grep "banana" words.txt | wc -l
+       3
+
+* Задача 15 (extract_unique_lines): Выведите список уникальных слов из файла words.txt (дубликаты должны быть удалены, каждое слово выводится один раз).
+➜  2 git:(main) ✗ sort words.txt | uniq
+apple
+banana
+cherry
+
+* Задача 16 (invert_grep): Выведите все строки из файла system.log, которые НЕ содержат слово error.
+➜  2 git:(main) ✗ grep -v "error" system.log
+warning: high cpu
+info: all good
+
+* Задача 17 (remove_empty_lines): Удалите все пустые строки из файла spaces.txt (выведите в консоль текст так, чтобы в нём остались только строки с текстом, без разрывов).
+➜  2 git:(main) ✗ grep -v "^$" spaces.txt
+line1
+line2
+line3
+line4
+line5
+
+* Задача 18 (replace_text): Замените в файле system.log все слова error на слово CRITICAL и выведите результат на экран (сам файл изменять не нужно, только поток вывода).
+➜  2 git:(main) ✗ sed 's/error/CRITICAL/g' system.log
+CRITICAL: disk full
+warning: high cpu
+CRITICAL: database down
+info: all good
+➜  2 git:(main) ✗ cat system.log
+error: disk full
+warning: high cpu
+error: database down
+info: all good
+
+* Задача 19 (find_and_delete): Найдите в текущей директории все файлы, которые заканчиваются на .log (у нас это access.log и system.log), и удалите их одной командой с помощью find.
+➜  2 git:(main) ✗ find . -name "*.log"
+./system.log
+./access.log
+➜  2 git:(main) ✗ find . -name "*.log" -delete
+➜  2 git:(main) ✗ find . -name "*.log"
+
+* Задача 20 (sum_numbers): Представьте, что у вас есть файл numbers.txt со следующим содержимым (можете создать его через echo -e "10\n20\n30" > numbers.txt). Напишите команду, которая сложит все эти числа и выведет общую сумму (60).
+➜  2 git:(main) ✗ echo -e "10\n20\n30" > numbers.txt
+➜  2 git:(main) ✗ awk '{sum += $1} END {print sum}' numbers.txt
+60
