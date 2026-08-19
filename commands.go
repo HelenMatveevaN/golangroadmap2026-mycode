@@ -73,7 +73,7 @@ func ListTasks(s *Storage) error {
 	fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", blue("ID"), blue("СТАТУС"), blue("ЗАДАЧА"), blue("СОЗДАНА"))
 
 	for _, t := range tasks {
-		status := "[ ]"
+		var status string
 		if t.Done {
 			status = green("[x]") //зеленый для выполненных
 		} else {
