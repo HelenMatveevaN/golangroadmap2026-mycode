@@ -1,4 +1,4 @@
-module github.com/HelenMatveevaN/golangroadmap2026-mycode
+module gotodo
 
 go 1.24.13
 
