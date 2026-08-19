@@ -1,0 +1,13 @@
+# Бинарники
+gotodo
+gotodo.exe
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Локальные файлы тестов/данных (если создавал в корне)
+*.json
+tasks.json
+.gotodo/
