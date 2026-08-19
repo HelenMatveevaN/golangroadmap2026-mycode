@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"text/tabwriter"
 	"time"
+
+	"github.com/fatih/color"
 )
 
 // AddTask добавляет новую задачу
@@ -47,7 +49,7 @@ func AddTask(s *Storage, title string) error {
 	return nil
 }
 
-// ListTasks выводит все задачи в виде таблицы
+// ListTasks выводит все задачи в виде цветной таблицы
 func ListTasks(s *Storage) error {
 	tasks, err := s.Load()
 	if err != nil {
@@ -59,14 +61,23 @@ func ListTasks(s *Storage) error {
 		return nil
 	}
 
+	// Создаем функции для раскраски текста
+	blue := color.New(color.BgBlue, color.Bold).SprintFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
+	green := color.New(color.FgGreen).SprintFunc()
+
 	// Инициализируем tabwriter для красивых колонок в терминале
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "ID\tСТАТУС\tЗАДАЧА\tСОЗДАНА")
+
+	// Подсвечиваем заголовки синим
+	fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", blue("ID"), blue("СТАТУС"), blue("ЗАДАЧА"), blue("СОЗДАНА"))
 
 	for _, t := range tasks {
 		status := "[ ]"
 		if t.Done {
-			status = "[x]"
+			status = green("[x]") //зеленый для выполненных
+		} else {
+			status = yellow("[ ]") //желтый для активных
 		}
 		// Форматируем дату в удобный вид
 		dateStr := t.CreatedAt.Format("02.01.2006 15:04")
