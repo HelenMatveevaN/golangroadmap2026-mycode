@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -11,9 +12,35 @@ import (
 )
 
 // AddTask добавляет новую задачу
-func AddTask(s *Storage, title string) error {
+func AddTask(s *Storage, title, priority, dueStr string) error {
 	if title == "" {
 		return fmt.Errorf("название задачи не может быть пустым")
+	}
+
+	//Валидация приоритета
+	priority = strings.ToLower(priority)
+	if priority != "low" && priority != "medium" && priority != "high" {
+		return fmt.Errorf("неверный приоритет %q; доступные варианты: low, medium, high", priority)
+	}
+
+	// Парсинг дедлайна (поддерживает форматы вроде "24h", "2d")
+	var dueDate time.Time
+	if dueStr != "" {
+		// Поддержка дней (Go time.ParseDuration не знает символ 'd')
+		if strings.HasSuffix(dueStr, "d") {
+			daysStr := strings.TrimSuffix(dueStr, "d")
+			days, err := strconv.Atoi(daysStr)
+			if err != nil {
+				return fmt.Errorf("неверный формат дедлайна: %v", err)
+			}
+			dueDate = time.Now().AddDate(0, 0, days)
+		} else {
+			duration, err := time.ParseDuration(dueStr)
+			if err != nil {
+				return fmt.Errorf("неверный формат дедлайна (пример: 12h, 2d): %v", err)
+			}
+			dueDate = time.Now().Add(duration)
+		}
 	}
 
 	tasks, err := s.Load()
@@ -37,6 +64,8 @@ func AddTask(s *Storage, title string) error {
 		ID:        newID,
 		Title:     title,
 		Done:      false,
+		Priority:  priority,
+		DueDate:   dueDate,
 		CreatedAt: time.Now(),
 	}
 
@@ -49,8 +78,8 @@ func AddTask(s *Storage, title string) error {
 	return nil
 }
 
-// ListTasks выводит все задачи в виде цветной таблицы
-func ListTasks(s *Storage) error {
+// ListTasks выводит задачи с учетом фильтрации
+func ListTasks(s *Storage, filter string) error {
 	tasks, err := s.Load()
 	if err != nil {
 		return err
@@ -61,27 +90,64 @@ func ListTasks(s *Storage) error {
 		return nil
 	}
 
-	// Создаем функции для раскраски текста
-	blue := color.New(color.BgBlue, color.Bold).SprintFunc()
-	yellow := color.New(color.FgYellow).SprintFunc()
-	green := color.New(color.FgGreen).SprintFunc()
-
 	// Инициализируем tabwriter для красивых колонок в терминале
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', tabwriter.StripEscape)
 
 	// Подсвечиваем заголовки синим
-	fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", blue("ID"), blue("СТАТУС"), blue("ЗАДАЧА"), blue("СОЗДАНА"))
+	fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+		color.BlueString("ID"),
+		color.BlueString("СТАТУС"),
+		color.BlueString("ПРИОРИТЕТ"),
+		color.BlueString("ЗАДАЧА"),
+		color.BlueString("ДЕДЛАЙН"),
+	)
 
+	hasVisibleTasks := false
 	for _, t := range tasks {
+		// Фильтрация
+		if filter == "active" && t.Done {
+			continue
+		}
+		if filter == "done" && !t.Done {
+			continue
+		}
+		hasVisibleTasks = true
+
+		// Статус
 		var status string
 		if t.Done {
-			status = green("[x]") //зеленый для выполненных
+			status = color.GreenString("[x]") //зеленый для выполненных
 		} else {
-			status = yellow("[ ]") //желтый для активных
+			status = color.YellowString("[ ]") //желтый для активных
 		}
-		// Форматируем дату в удобный вид
-		dateStr := t.CreatedAt.Format("02.01.2006 15:04")
-		fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", t.ID, status, t.Title, dateStr)
+
+		// Раскраска приоритета
+		var pStr string
+		switch t.Priority {
+		case "high":
+			pStr = color.RedString("HIGH")
+		case "medium":
+			pStr = color.YellowString("MEDIUM")
+		default:
+			pStr = color.HiBlackString("LOW")
+		}
+
+		// Форматирование дедлайна
+		dueStr := "-"
+		if !t.DueDate.IsZero() {
+			dueStr = t.DueDate.Format("02.01.2006 15:04")
+			// Если задача не выполнена и дедлайн просрочен, подсветим его красным
+			if !t.Done && time.Now().After(t.DueDate) {
+				dueStr = color.RedString(dueStr + " [⚠️ ПРОСРОЧЕНО]")
+			}
+		}
+
+		fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n", t.ID, status, pStr, t.Title, dueStr)
+	}
+
+	if !hasVisibleTasks {
+		fmt.Printf("Нет задач, соответствующих фильтру %q.\n", filter)
+		return nil
 	}
 
 	return w.Flush()

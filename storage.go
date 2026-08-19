@@ -8,47 +8,43 @@ import (
 	"time"
 )
 
+// Task описывает расширенную структуру одной задачи
 type Task struct {
-	ID    int    `json:"id"`
-	Title string `json:"title"`
-	//Priority string `json:"priority"`
-	//DueDate  string `json:"due_date"`
+	ID        int       `json:"id"`
+	Title     string    `json:"title"`
 	Done      bool      `json:"done"`
+	Priority  string    `json:"priority"` // low, medium, high
+	DueDate   time.Time `json:"due_date"` // дедлайн
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// Storage управляет чтением и записью файла задач
 type Storage struct {
 	FilePath string
 }
 
 // находит домашнюю папку пользователя и создает там каталог .gotodo
 func getStoragePath() (string, error) {
-	home, err := os.UserHomeDir() //// На macOS вернет /Users/imac
+	homeDir, err := os.UserHomeDir() //// На macOS вернет /Users/imac
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(home, ".gotodo")
 
-	//создадим папку, права доступа 0755
-	err = os.MkdirAll(dir, 0755)
-	if err != nil {
+	dirPath := filepath.Join(homeDir, ".gotodo")
+	filePath := filepath.Join(dirPath, "tasks.json")
+
+	// Создаем папку ~/.gotodo, если её нет
+	if err = os.MkdirAll(dirPath, 0755); err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "tasks.json"), nil
+
+	return filePath, nil
 }
 
 // NewStorage инициализирует путь к ~/.gotodo/tasks.json и создает папку при необходимости
 func newStorage() (*Storage, error) {
-	homeDir, err := os.UserHomeDir() // На macOS вернет /Users/imac
+	filePath, err := getStoragePath()
 	if err != nil {
-		return nil, err
-	}
-
-	dirPath := filepath.Join(homeDir, ".gotodo")     // Формируем путь ~/.gotodo
-	filePath := filepath.Join(dirPath, "tasks.json") // Формируем путь ~/.gotodo/tasks.json
-
-	// Создаем папку ~/.gotodo, если её нет (права 0755)
-	if err := os.MkdirAll(dirPath, 0755); err != nil {
 		return nil, err
 	}
 	return &Storage{FilePath: filePath}, nil
