@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"reflect"
 	"strconv"
 	"text/tabwriter"
 	"time"
@@ -62,7 +61,7 @@ func ListTasks(s *Storage) error {
 
 	// Инициализируем tabwriter для красивых колонок в терминале
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Println(w, "\ID\tСТАТУС\tЗАДАЧА\tСОЗДАНА")
+	fmt.Fprintln(w, "ID\tСТАТУС\tЗАДАЧА\tСОЗДАНА")
 
 	for _, t := range tasks {
 		status := "[ ]"
@@ -71,7 +70,7 @@ func ListTasks(s *Storage) error {
 		}
 		// Форматируем дату в удобный вид
 		dateStr := t.CreatedAt.Format("02.01.2006 15:04")
-		fmt.Printf(w, "%d\t%s\t%s\t%s\n", t.ID, status, t.Title, dateStr)
+		fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", t.ID, status, t.Title, dateStr)
 	}
 
 	return w.Flush()
