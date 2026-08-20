@@ -1,184 +1,126 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
+	"strings"
 )
 
-type Task struct {
-	ID       int    `json:"id"`
-	Title    string `json:"title"`
-	Priority string `json:"priority"`
-	DueDate  string `json:"due_date"`
-	Done     bool   `json:"done"`
-}
-
 func main() {
-	priorityFlag := flag.String("priority", "medium", "Приоритет задачи (low, medium, high)")
-	dueFlag := flag.String("due", "", "Срок выполнения задачи (формат: ГГГГ-ММ-ДД)")
-	filterFlag := flag.String("filter", "all", "Фильтрация списка задач (all, done, pending)")
+	// Инициализируем хранилище (~/.gotodo/tasks.json)
+	store, err := newStorage()
+	if err != nil {
+		fmt.Printf("Ошибка инициализации хранилища: %v\n", err)
+		os.Exit(1)
+	}
 
-	flag.Parse()        // парсинг командной строки
-	args := flag.Args() //парсим все после флагов
-
-	//если команд нет, показываем, как пользоваться флагами
-	if len(args) == 0 {
-		fmt.Println("Использование: gotodo [флаги] [команда] [аргументы]")
+	// Проверяем, передана ли команда
+	if len(os.Args) < 2 {
+		printHelp()
 		return
 	}
 
-	storagePath, err := getStoragePath()
-	if err != nil {
-		fmt.Printf("Ошибка определения пути: %v\n", err)
-		os.Exit(1)
-	}
-
-	//читаем задачи из файла
-	tasks, err := readTasks(storagePath)
-	if err != nil {
-		fmt.Printf("Ошибка чтения файла: %v\n", err)
-		os.Exit(1)
-	}
-
-	//первое оставшееся слово - наша команда
-	command := args[0]
+	command := os.Args[1]
 
 	switch command {
 	case "add":
-		//для добавления нужно 2 слова
-		if len(args) < 2 {
-			fmt.Println("Ошибка: Укажите текст задачи. Пример: gotodo add \"Купить хлеб\"")
-			return
-		}
-		taskTitle := args[1]
+		addCmd := flag.NewFlagSet("add", flag.ExitOnError)
+		priority := addCmd.String("priority", "low", "Приоритет задачи (low, medium, high)")
+		due := addCmd.String("due", "", "Дедлайн задачи (например, 2d, 12h)")
 
-		newID := 1
-		if len(tasks) > 0 {
-			newID = tasks[len(tasks)-1].ID + 1
+		// Хитрый трюк: отделяем флаги от текста задачи, чтобы Go их правильно распарсил
+		var flagArgs []string
+		var titleArgs []string
+
+		for i := 2; i < len(os.Args); i++ {
+			arg := os.Args[i]
+			if strings.HasPrefix(arg, "-") {
+				flagArgs = append(flagArgs, arg)
+				// Если у флага есть значение (следующий аргумент), забираем и его
+				if i+1 < len(os.Args) && !strings.HasPrefix(os.Args[i+1], "-") {
+					flagArgs = append(flagArgs, os.Args[i+1])
+					i++
+				}
+			} else {
+				titleArgs = append(titleArgs, arg)
+			}
 		}
 
-		newTask := Task{
-			ID:       newID,
-			Title:    taskTitle,
-			Priority: *priorityFlag,
-			DueDate:  *dueFlag,
-			Done:     false,
-		}
+		// Парсим только чистые флаги
+		_ = addCmd.Parse(flagArgs)
 
-		tasks = append(tasks, newTask)
-
-		err := writeTasks(storagePath, tasks)
-		if err != nil {
-			fmt.Printf("Ошибка сохранения: %v\n", err)
-			return
+		if len(titleArgs) < 1 {
+			fmt.Println("Ошибка: укажите название задачи. Пример: gotodo add \"Купить хлеб\" --priority high")
+			os.Exit(1)
 		}
-		fmt.Printf("Успех: Задача [%d] записана в JSON!\n", newID)
+		title := strings.Join(titleArgs, " ")
+
+		if err := AddTask(store, title, *priority, *due); err != nil {
+			fmt.Printf("Ошибка при добавлении задачи: %v\n", err)
+			os.Exit(1)
+		}
 
 	case "list":
-		if len(tasks) == 0 {
-			fmt.Println("Список задач пуст. Добавьте задачу через add")
-			return
+		listCmd := flag.NewFlagSet("list", flag.ExitOnError)
+		filter := listCmd.String("filter", "all", "Фильтр задач (all, active, done)")
+
+		_ = listCmd.Parse(os.Args[2:])
+
+		// Передаем store и распакованную строку фильтра (*filter)
+		if err := ListTasks(store, *filter); err != nil {
+			fmt.Printf("Ошибка: %v\n", err)
+			os.Exit(1)
 		}
-
-		fmt.Println("=== СПИСОК ЗАДАЧ ИЗ JSON ===")
-		for _, t := range tasks {
-			if *filterFlag == "done" && !t.Done {
-				continue
-			}
-			if *filterFlag == "pending" && t.Done {
-				continue
-			}
-
-			status := "[ ]"
-			if t.Done {
-				status = " [V]"
-			}
-
-			fmt.Printf("%s %d: %s | Приоритет: %s | Срок: %s\n",
-				status, t.ID, t.Title, t.Priority, t.DueDate)
-		}
-
-		fmt.Println("Показываем список задач...")
-		fmt.Printf("Применен фильтр: %s\n", *filterFlag)
 
 	case "done":
-		if len(args) < 2 {
-			fmt.Println("Ошибка: Укажите ID задачи. Пример: gotodo done 1")
-			return
+		if len(os.Args) < 3 {
+			fmt.Println("Ошибка: укажите ID задачи. Пример: gotodo done 1")
+			os.Exit(1)
 		}
-		//ID задачи
-		taskID := args[1]
-		fmt.Printf("Отмечаем задачу с ID %s как выполненную\n", taskID)
+		idStr := os.Args[2]
+		if err := CompleteTask(store, idStr); err != nil {
+			fmt.Printf("Ошибка при выполнении задачи: %v\n", err)
+			os.Exit(1)
+		}
 
 	case "rm":
-		if len(args) < 2 {
-			fmt.Println("Ошибка: Укажите ID задачи для удаления. Пример: gotodo rm 1")
-			return
+		if len(os.Args) < 3 {
+			fmt.Println("Ошибка: укажите ID для удаления. Пример: gotodo rm 1")
+			os.Exit(1)
 		}
-		//ID задачи
-		taskID := args[1]
-		fmt.Printf("Удаляем задачу с ID %s\n", taskID)
+		idStr := os.Args[2]
+		if err := RemoveTask(store, idStr); err != nil {
+			fmt.Printf("Ошибка при удалении задачи: %v\n", err)
+			os.Exit(1)
+		}
 
 	case "clear":
-		fmt.Println("Очищаем все задачи из списка...")
+		if err := ClearTasks(store); err != nil {
+			fmt.Printf("Ошибка при очистке задач: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "help", "-h", "--help":
+		printHelp()
 
 	default:
-		fmt.Printf("Неизвестная команда: %s\n", command)
+		fmt.Printf("Неизвестная команда: %q\n", command)
+		os.Exit(1)
 	}
 }
 
-// находит домашнюю папку пользователя и создает там каталог .gotodo
-func getStoragePath() (string, error) {
-	home, err := os.UserHomeDir() //// На macOS вернет /Users/imac
-	if err != nil {
-		return "", err
-	}
-	dir := filepath.Join(home, ".gotodo")
-
-	//создадим папку, права доступа 0755
-	err = os.MkdirAll(dir, 0755)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dir, "tasks.json"), nil
+// printHelp выводит подсказку по использованию утилиты
+func printHelp() {
+	fmt.Println("CLI-менеджер задач gotodo")
+	fmt.Println("\nИспользование:")
+	fmt.Println("  gotodo <команда> [аргументы] [флаги]")
+	fmt.Println("\nДоступные команды:")
+	fmt.Println("  add \"текст\"   Добавить задачу")
+	fmt.Println("                Флаги: --priority (low|medium|high), --due (например: 2d, 5h)")
+	fmt.Println("  list           Показать задачи")
+	fmt.Println("                Флаги: --filter (all|active|done)")
+	fmt.Println("  done <id>      Отметить задачу как выполненную")
+	fmt.Println("  rm <id>        Удалить задачу по ID")
+	fmt.Println("  clear          Очистить базу данных")
 }
-
-// readTasks читает файл и превращает байты JSON в массив структур Go
-func readTasks(path string) ([]Task, error) {
-	// Проверяем, существует ли файл. Если нет — возвращаем пустой список
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return []Task{}, nil
-	}
-
-	// Читаем сырые байты из файла
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var tasks []Task
-	// Десериализация: превращаем JSON-текст в слайс структур tasks
-	err = json.Unmarshal(data, &tasks)
-	if err != nil {
-		return nil, err
-	}
-	return tasks, nil
-}
-
-func writeTasks(path string, task []Task) error {
-	data, err := json.MarshalIndent(task, "", "  ")
-	if err != nil {
-		return err
-	}
-	//запись байтов в файл, 0644 - права на чтение и запись
-	return os.WriteFile(path, data, 0644)
-}
-
-/*
-go run main.go --priority=high --due=2026-08-18 add "Исправить ошибку типов"
-Добавляем задачу: "Исправить ошибку типов"
-С флагами -> Приоритет: high, Срок: 2026-08-18
-*/
