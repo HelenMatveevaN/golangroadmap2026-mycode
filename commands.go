@@ -2,11 +2,10 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 	"time"
+	"unicode/utf8"
 
 	"github.com/fatih/color"
 )
@@ -78,7 +77,7 @@ func AddTask(s *Storage, title, priority, dueStr string) error {
 	return nil
 }
 
-// ListTasks выводит задачи с учетом фильтрации
+// ListTasks выводит задачи с гарантированно ровными колонками на любом языке
 func ListTasks(s *Storage, filter string) error {
 	tasks, err := s.Load()
 	if err != nil {
@@ -90,21 +89,36 @@ func ListTasks(s *Storage, filter string) error {
 		return nil
 	}
 
-	// Инициализируем tabwriter для красивых колонок в терминале
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 4, ' ', tabwriter.StripEscape)
+	// Жестко заданные визуальные ширины колонок (в символах на экране)
+	const (
+		wID       = 5
+		wStatus   = 12
+		wPriority = 14
+		wTask     = 30
+	)
 
-	// Подсвечиваем заголовки синим
-	fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-		color.BlueString("ID"),
-		color.BlueString("СТАТУС"),
-		color.BlueString("ПРИОРИТЕТ"),
-		color.BlueString("ЗАДАЧА"),
-		color.BlueString("ДЕДЛАЙН"),
+	// Вспомогательная функция выравнивания. Считает реальные символы (руны) на экране
+	formatCol := func(coloredText string, cleanText string, totalWidth int) string {
+		screenLength := utf8.RuneCountInString(cleanText) // Считаем символы, а не байты!
+		padding := totalWidth - screenLength
+		if padding < 0 {
+			padding = 0
+		}
+		return coloredText + strings.Repeat(" ", padding)
+	}
+
+	// 1. Выводим заголовки шапки (теперь с точным подсчетом русских букв)
+	blue := color.New(color.FgBlue, color.Bold).SprintFunc()
+	fmt.Printf("%s%s%s%s%s\n",
+		formatCol(blue("ID"), "ID", wID),
+		formatCol(blue("СТАТУС"), "СТАТУС", wStatus),
+		formatCol(blue("ПРИОРИТЕТ"), "ПРИОРИТЕТ", wPriority),
+		formatCol(blue("ЗАДАЧА"), "ЗАДАЧА", wTask),
+		blue("ДЕДЛАЙН"),
 	)
 
 	hasVisibleTasks := false
 	for _, t := range tasks {
-		// Фильтрация
 		if filter == "active" && t.Done {
 			continue
 		}
@@ -113,36 +127,48 @@ func ListTasks(s *Storage, filter string) error {
 		}
 		hasVisibleTasks = true
 
-		// Статус
-		var status string
+		// Форматируем ID
+		idStr := strconv.Itoa(t.ID)
+		idCol := formatCol(idStr, idStr, wID)
+
+		// Форматируем цветной статус
+		var statusCol string
 		if t.Done {
-			status = color.GreenString("[x]") //зеленый для выполненных
+			statusCol = formatCol(color.GreenString("[x]"), "[x]", wStatus)
 		} else {
-			status = color.YellowString("[ ]") //желтый для активных
+			statusCol = formatCol(color.YellowString("[ ]"), "[ ]", wStatus)
 		}
 
-		// Раскраска приоритета
-		var pStr string
+		// Форматируем цветной приоритет
+		var priorityCol string
 		switch t.Priority {
 		case "high":
-			pStr = color.RedString("HIGH")
+			priorityCol = formatCol(color.RedString("HIGH"), "HIGH", wPriority)
 		case "medium":
-			pStr = color.YellowString("MEDIUM")
+			priorityCol = formatCol(color.YellowString("MEDIUM"), "MEDIUM", wPriority)
 		default:
-			pStr = color.HiBlackString("LOW")
+			priorityCol = formatCol(color.HiBlackString("LOW"), "LOW", wPriority)
 		}
 
-		// Форматирование дедлайна
+		// Безопасно ограничиваем длину названия задачи по рунам (символам)
+		titleRunes := []rune(t.Title)
+		displayTitle := t.Title
+		if len(titleRunes) > wTask-3 {
+			displayTitle = string(titleRunes[:wTask-6]) + "..."
+		}
+		titleCol := formatCol(displayTitle, displayTitle, wTask)
+
+		// Форматируем дедлайн
 		dueStr := "-"
 		if !t.DueDate.IsZero() {
 			dueStr = t.DueDate.Format("02.01.2006 15:04")
-			// Если задача не выполнена и дедлайн просрочен, подсветим его красным
 			if !t.Done && time.Now().After(t.DueDate) {
 				dueStr = color.RedString(dueStr + " [⚠️ ПРОСРОЧЕНО]")
 			}
 		}
 
-		fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n", t.ID, status, pStr, t.Title, dueStr)
+		// Выводим готовую, идеально собранную строку
+		fmt.Printf("%s%s%s%s%s\n", idCol, statusCol, priorityCol, titleCol, dueStr)
 	}
 
 	if !hasVisibleTasks {
@@ -150,7 +176,7 @@ func ListTasks(s *Storage, filter string) error {
 		return nil
 	}
 
-	return w.Flush()
+	return nil
 }
 
 // CompleteTask отмечает задачу как выполненную

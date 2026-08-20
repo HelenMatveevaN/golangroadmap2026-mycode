@@ -29,11 +29,27 @@ func main() {
 		priority := addCmd.String("priority", "low", "Приоритет задачи (low, medium, high)")
 		due := addCmd.String("due", "", "Дедлайн задачи (например, 2d, 12h)")
 
-		// Парсим флаги, идущие после слова "add"
-		_ = addCmd.Parse(os.Args[2:])
+		// Хитрый трюк: отделяем флаги от текста задачи, чтобы Go их правильно распарсил
+		var flagArgs []string
+		var titleArgs []string
 
-		// Всё, что осталось после флагов — это текст задачи
-		titleArgs := addCmd.Args()
+		for i := 2; i < len(os.Args); i++ {
+			arg := os.Args[i]
+			if strings.HasPrefix(arg, "-") {
+				flagArgs = append(flagArgs, arg)
+				// Если у флага есть значение (следующий аргумент), забираем и его
+				if i+1 < len(os.Args) && !strings.HasPrefix(os.Args[i+1], "-") {
+					flagArgs = append(flagArgs, os.Args[i+1])
+					i++
+				}
+			} else {
+				titleArgs = append(titleArgs, arg)
+			}
+		}
+
+		// Парсим только чистые флаги
+		_ = addCmd.Parse(flagArgs)
+
 		if len(titleArgs) < 1 {
 			fmt.Println("Ошибка: укажите название задачи. Пример: gotodo add \"Купить хлеб\" --priority high")
 			os.Exit(1)
@@ -96,7 +112,7 @@ func main() {
 
 // printHelp выводит подсказку по использованию утилиты
 func printHelp() {
-	fmt.Println("CLI-менеджер задач gotodo с поддержкой флагов")
+	fmt.Println("CLI-менеджер задач gotodo")
 	fmt.Println("\nИспользование:")
 	fmt.Println("  gotodo <команда> [аргументы] [флаги]")
 	fmt.Println("\nДоступные команды:")
