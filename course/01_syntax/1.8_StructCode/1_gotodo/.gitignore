@@ -1,0 +1,16 @@
+# Бинарники Go
+gotodo
+gotodo.exe
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Локальные базы данных утилиты
+*.json
+tasks.json
+.gotodo/
+
+# Другие системные файлы курсов
+.DS_Store
