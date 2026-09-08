@@ -1,0 +1,5 @@
+server:
+  port: ":8085"
+site:
+  title: "Мой Go-Вики Сайт"
+  author: "iMac User"
