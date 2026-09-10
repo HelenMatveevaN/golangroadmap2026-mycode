@@ -18,6 +18,7 @@ go run ./cmd/wiki/ new MyFuturisticBlog --author "iMac Developer"
 go run ./cmd/wiki/ build
 go run ./cmd/wiki/ serve
 
+go vet ./...
 golangci-lint run ./...
 */
 
